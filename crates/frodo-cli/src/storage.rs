@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use crate::config::Config;
 use color_eyre::Result;
 use dirs::data_dir;
 use frodo_storage::{
@@ -22,6 +23,19 @@ pub fn production_store() -> Result<EncryptedFileStore<KeyringProvider>> {
         root,
         KeyringProvider::new("frodo-cli", "data-key"),
     ))
+}
+
+/// Build a store using config overrides.
+pub fn store_from_config(config: &Config) -> Result<EncryptedFileStore<KeyringProvider>> {
+    if let Some(root) = &config.data_dir {
+        debug!(?root, "initializing encrypted store (config override)");
+        return Ok(EncryptedFileStore::new(
+            root.clone(),
+            KeyringProvider::new("frodo-cli", "data-key"),
+        ));
+    }
+
+    production_store()
 }
 
 /// Helper for tests to construct a store rooted at a temp dir with an in-memory key.

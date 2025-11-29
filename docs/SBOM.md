@@ -20,6 +20,7 @@ This SBOM tracks the crates currently declared in the workspace and the rational
 | keyring | 3.6.3 | OS keychain access for wrapping data keys | Maintained |
 | tempfile | 3.23.0 | Temp files for atomic writes in storage tests | Stable |
 | dirs | 6.0.0 | Cross-platform config/data dir discovery | Stable |
+| toml | 0.9.8 | Config file parsing | Latest stable |
 | ratatui | 0.29.0 | Terminal UI rendering | Latest stable (0.30 is beta) |
 | crossterm | 0.29.0 | Cross-platform terminal I/O backend | Matches ratatui stack |
 

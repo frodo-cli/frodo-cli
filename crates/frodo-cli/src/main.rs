@@ -1,4 +1,5 @@
 mod cli;
+mod config;
 mod storage;
 mod tui;
 
@@ -15,10 +16,11 @@ async fn main() -> Result<()> {
     init_tracing();
 
     let cli = cli::Cli::parse();
+    let config = config::load()?;
     match cli.command.unwrap_or(cli::Command::Tui) {
         cli::Command::Tui => tui::launch()?,
         cli::Command::Version => print_version(),
-        cli::Command::Health => run_health_check().await?,
+        cli::Command::Health => run_health_check(&config).await?,
     }
 
     Ok(())
@@ -39,8 +41,8 @@ fn print_version() {
 }
 
 /// Runs a quick health check of the encrypted storage path.
-async fn run_health_check() -> Result<()> {
-    let store: EncryptedFileStore<_> = storage::production_store()?;
+async fn run_health_check(config: &config::Config) -> Result<()> {
+    let store: EncryptedFileStore<_> = storage::store_from_config(config)?;
     run_store_health(&store).await?;
     println!("Storage: ok");
     Ok(())

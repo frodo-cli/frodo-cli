@@ -19,6 +19,7 @@ crossterm = "0.29.0"
 dirs.workspace = true
 frodo-core = { path = "../frodo-core" }
 frodo-storage = { path = "../frodo-storage" }
+toml.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true
