@@ -6,18 +6,19 @@ use crossterm::{
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
+use frodo_core::tasks::{Task, TaskStatus};
 use ratatui::{
     backend::CrosstermBackend,
     layout::{Constraint, Direction, Layout},
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, BorderType, Borders, Paragraph},
+    widgets::{Block, BorderType, Borders, List, ListItem, Paragraph},
     Terminal,
 };
 
 /// Minimal TUI placeholder to prove the rendering stack and input loop.
 /// Press `q` or `Esc` to exit.
-pub fn launch() -> Result<()> {
+pub fn launch(tasks: &[Task]) -> Result<()> {
     // Guard restores the terminal even if we early-return.
     let _guard = TerminalGuard::enter()?;
     let mut terminal = _guard.terminal()?;
@@ -56,17 +57,30 @@ pub fn launch() -> Result<()> {
             );
             frame.render_widget(header, chunks[0]);
 
-            let body = Paragraph::new(Line::from(vec![
-                Span::raw("This is a starter view. "),
-                Span::styled(
-                    "Tasks, chat, and agents will live here.",
-                    Style::default().fg(Color::Yellow),
-                ),
-            ]))
-            .block(
+            let items: Vec<ListItem> = tasks
+                .iter()
+                .map(|t| {
+                    let mut line = vec![
+                        Span::styled(
+                            status_label(&t.status),
+                            Style::default()
+                                .fg(status_color(&t.status))
+                                .add_modifier(Modifier::BOLD),
+                        ),
+                        Span::raw(" "),
+                        Span::styled(&t.title, Style::default().add_modifier(Modifier::BOLD)),
+                    ];
+                    if let Some(desc) = &t.description {
+                        line.push(Span::raw(format!(" — {desc}")));
+                    }
+                    ListItem::new(Line::from(line))
+                })
+                .collect();
+
+            let body = List::new(items).block(
                 Block::default()
                     .borders(Borders::ALL)
-                    .title("Journey map (coming soon)"),
+                    .title("Tasks (local)"),
             );
             frame.render_widget(body, chunks[1]);
 
@@ -91,6 +105,22 @@ pub fn launch() -> Result<()> {
     }
 
     Ok(())
+}
+
+fn status_label(status: &TaskStatus) -> &'static str {
+    match status {
+        TaskStatus::Todo => "[todo]",
+        TaskStatus::InProgress => "[doing]",
+        TaskStatus::Done => "[done]",
+    }
+}
+
+fn status_color(status: &TaskStatus) -> Color {
+    match status {
+        TaskStatus::Todo => Color::Yellow,
+        TaskStatus::InProgress => Color::Cyan,
+        TaskStatus::Done => Color::Green,
+    }
 }
 
 struct TerminalGuard;

@@ -11,8 +11,10 @@ use frodo_agent::openai::{OpenAiAgent, OpenAiSettings};
 use frodo_core::{
     agent::{Agent, AgentContext, AgentRequest, AgentResponse, EchoAgent},
     storage::SecureStore,
+    tasks::{Task, TaskRepository},
 };
 use frodo_storage::secure_file_store::EncryptedFileStore;
+use frodo_task::SecureStoreTaskRepo;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 use tracing::warn;
@@ -27,7 +29,10 @@ async fn main() -> Result<()> {
     let cli = cli::Cli::parse();
     let config = config::load()?;
     match cli.command.unwrap_or(cli::Command::Tui) {
-        cli::Command::Tui => tui::launch()?,
+        cli::Command::Tui => {
+            let tasks = load_tasks(&config).await?;
+            tui::launch(&tasks)?
+        }
         cli::Command::Version => print_version(),
         cli::Command::Health => run_health_check(&config).await?,
         cli::Command::Config(ConfigCommand::Init) => init_config(&config)?,
@@ -150,6 +155,14 @@ fn resolve_openai_settings(config: &config::Config) -> Option<OpenAiSettings> {
         model,
         api_base,
     })
+}
+
+async fn load_tasks(config: &config::Config) -> Result<Vec<Task>> {
+    let store = storage::store_from_config(config)?;
+    let repo: SecureStoreTaskRepo<_> = SecureStoreTaskRepo::new(store);
+    repo.list()
+        .await
+        .map_err(|e| color_eyre::eyre::eyre!(e.to_string()))
 }
 
 #[cfg(test)]
