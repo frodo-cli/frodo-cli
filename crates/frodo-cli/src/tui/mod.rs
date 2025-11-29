@@ -89,7 +89,9 @@ pub fn launch(tasks: &[Task], mut on_mark_done: impl FnMut(Uuid, TaskStatus)) ->
             let footer = Paragraph::new(Line::from(vec![
                 Span::raw("Press "),
                 Span::styled("q", Style::default().fg(Color::Cyan)),
-                Span::raw(" or "),
+                Span::raw(", "),
+                Span::styled("d", Style::default().fg(Color::Yellow)),
+                Span::raw(" to mark next task done, or "),
                 Span::styled("Esc", Style::default().fg(Color::Cyan)),
                 Span::raw(" to quit."),
             ]))
