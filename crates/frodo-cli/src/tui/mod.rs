@@ -16,12 +16,13 @@ use ratatui::{
     Terminal,
 };
 
-/// Minimal TUI placeholder to prove the rendering stack and input loop.
+/// Minimal TUI that renders tasks and allows marking them done with `d`.
 /// Press `q` or `Esc` to exit.
 pub fn launch(tasks: &[Task]) -> Result<()> {
     // Guard restores the terminal even if we early-return.
     let _guard = TerminalGuard::enter()?;
     let mut terminal = _guard.terminal()?;
+    let mut tasks = tasks.to_owned();
 
     loop {
         terminal.draw(|frame| {
@@ -97,8 +98,16 @@ pub fn launch(tasks: &[Task]) -> Result<()> {
 
         if event::poll(Duration::from_millis(150))? {
             if let Event::Key(key) = event::read()? {
-                if matches!(key.code, KeyCode::Char('q') | KeyCode::Esc) {
-                    break;
+                match key.code {
+                    KeyCode::Char('q') | KeyCode::Esc => break,
+                    KeyCode::Char('d') => {
+                        // Mark first non-done task as done for now (placeholder until storage mutation is wired).
+                        if let Some(next) = tasks.iter_mut().find(|t| t.status != TaskStatus::Done)
+                        {
+                            next.status = TaskStatus::Done;
+                        }
+                    }
+                    _ => {}
                 }
             }
         }
