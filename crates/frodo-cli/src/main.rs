@@ -98,7 +98,8 @@ fn init_config(config: &config::Config) -> Result<()> {
 async fn run_ask(prompt: Vec<String>, config: &config::Config) -> Result<()> {
     let prompt_text = prompt.join(" ");
     let (agent_name, agent) = build_agent(config)?;
-    let response = ask_with_agent(agent.as_ref(), prompt_text).await?;
+    let tasks = load_tasks(config).await.unwrap_or_default();
+    let response = ask_with_agent(agent.as_ref(), prompt_text, &tasks).await?;
     println!("[{agent_name}] {}", response.message.content);
     if let Some(summary) = response.summary {
         println!("\nSummary: {summary}");
@@ -109,13 +110,19 @@ async fn run_ask(prompt: Vec<String>, config: &config::Config) -> Result<()> {
 async fn ask_with_agent(
     agent: &(dyn Agent + Send + Sync),
     prompt: String,
+    tasks: &[Task],
 ) -> Result<AgentResponse> {
+    let mut hints = BTreeMap::new();
+    if !tasks.is_empty() {
+        hints.insert("tasks".into(), format_task_context(tasks));
+    }
+
     let request = AgentRequest {
         prompt,
         conversation_id: None,
         context: AgentContext {
             workspace: None,
-            hints: BTreeMap::new(),
+            hints,
         },
     };
     agent
@@ -167,6 +174,32 @@ async fn load_tasks(config: &config::Config) -> Result<Vec<Task>> {
         .map_err(|e| color_eyre::eyre::eyre!(e.to_string()))
 }
 
+fn format_task_context(tasks: &[Task]) -> String {
+    let mut lines = Vec::new();
+    for task in tasks.iter().take(5) {
+        let tags = if task.tags.is_empty() {
+            "".to_string()
+        } else {
+            format!(" tags:{}", task.tags.join(","))
+        };
+        lines.push(format!(
+            "{} {}{}",
+            status_label(&task.status),
+            task.title,
+            tags
+        ));
+    }
+    lines.join("\n")
+}
+
+fn status_label(status: &frodo_core::tasks::TaskStatus) -> &'static str {
+    match status {
+        frodo_core::tasks::TaskStatus::Todo => "[todo]",
+        frodo_core::tasks::TaskStatus::InProgress => "[doing]",
+        frodo_core::tasks::TaskStatus::Done => "[done]",
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -184,7 +217,7 @@ mod tests {
     #[tokio::test]
     async fn ask_with_echo_agent_returns_echoed_content() {
         let agent = EchoAgent;
-        let response = ask_with_agent(&agent, "hello world".into())
+        let response = ask_with_agent(&agent, "hello world".into(), &[])
             .await
             .expect("ask should succeed");
         assert_eq!(response.message.content, "Echo: hello world");
