@@ -5,6 +5,7 @@ use chrono::{DateTime, Utc};
 use frodo_core::tasks::{Task, TaskStatus};
 use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, USER_AGENT};
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use tracing::instrument;
 use uuid::Uuid;
 
@@ -74,6 +75,26 @@ impl JiraSync {
             client: reqwest::Client::new(),
         }
     }
+
+    fn headers(&self) -> Result<HeaderMap> {
+        let mut headers = HeaderMap::new();
+        headers.insert(USER_AGENT, HeaderValue::from_static("frodo-cli"));
+        let basic = BASE64.encode(format!("{}:{}", self.cfg.email, self.cfg.api_token));
+        headers.insert(
+            AUTHORIZATION,
+            HeaderValue::from_str(&format!("Basic {}", basic))?,
+        );
+        Ok(headers)
+    }
+
+    fn base_url(&self) -> String {
+        self.cfg
+            .base_url
+            .as_deref()
+            .unwrap_or_else(|| self.cfg.site.as_str())
+            .trim_end_matches('/')
+            .to_string()
+    }
 }
 
 #[async_trait]
@@ -116,7 +137,26 @@ impl TaskSync for JiraSync {
 
     #[instrument(skip_all, fields(site = %self.cfg.site, project = %self.cfg.project_key))]
     async fn push(&self, _tasks: &[Task]) -> Result<()> {
-        // Placeholder: integrate Jira REST API here.
+        for task in _tasks {
+            let headers = self.headers()?;
+            let url = format!("{}/rest/api/3/issue", self.base_url());
+            let body = json!({
+                "fields": {
+                    "project": { "key": self.cfg.project_key },
+                    "summary": task.title,
+                    "description": task.description.clone().unwrap_or_default(),
+                    "issuetype": { "name": "Task" },
+                    "labels": task.tags,
+                }
+            });
+            self.client
+                .post(&url)
+                .headers(headers)
+                .json(&body)
+                .send()
+                .await?
+                .error_for_status()?;
+        }
         Ok(())
     }
 }
@@ -172,7 +212,31 @@ impl TaskSync for GitHubSync {
 
     #[instrument(skip_all, fields(repo = %self.cfg.repo, owner = %self.cfg.owner))]
     async fn push(&self, _tasks: &[Task]) -> Result<()> {
-        // TODO: Implement push to GitHub Issues.
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            AUTHORIZATION,
+            HeaderValue::from_str(&format!("token {}", self.cfg.token))?,
+        );
+        headers.insert(USER_AGENT, HeaderValue::from_static("frodo-cli"));
+        let base = self
+            .cfg
+            .api_base
+            .as_deref()
+            .unwrap_or("https://api.github.com");
+        let url = format!("{base}/repos/{}/{}/issues", self.cfg.owner, self.cfg.repo);
+        for task in _tasks {
+            let body = json!({
+                "title": task.title,
+                "body": task.description.clone().unwrap_or_default(),
+            });
+            self.client
+                .post(&url)
+                .headers(headers.clone())
+                .json(&body)
+                .send()
+                .await?
+                .error_for_status()?;
+        }
         Ok(())
     }
 }
