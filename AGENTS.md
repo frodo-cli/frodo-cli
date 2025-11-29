@@ -43,6 +43,7 @@ This file defines how Frodo’s AI agents work, what they can access, and how to
 - Default model: `gpt-4o-mini` (may be overridden in config).
 - Local: `llama.cpp`/GGML-backed provider (binary or library mode), for offline mode.
 - Context: agents receive a short local task summary (top 5 tasks, with status and tags) when using `frodo ask`; git/Jira/GitHub context planned next.
+- Release/update: `self-update` pulls latest GitHub release; agents must never self-update without explicit user action.
 - Stub: deterministic fake for tests.
 - Config: endpoint, model id, api key, timeouts, max tokens, temperature; pulled from config file + env; secrets kept in keychain when possible.
 - Transport: `reqwest` with strict TLS; HTTP proxy honors env vars; retries with jitter.
