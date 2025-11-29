@@ -723,6 +723,7 @@ dependencies = [
  "frodo-agent",
  "frodo-core",
  "frodo-storage",
+ "frodo-sync",
  "frodo-task",
  "ratatui",
  "serde",
@@ -764,6 +765,19 @@ dependencies = [
  "serde_json",
  "tempfile",
  "thiserror 2.0.17",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "frodo-sync"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "frodo-core",
+ "serde",
+ "serde_json",
  "tokio",
  "tracing",
 ]

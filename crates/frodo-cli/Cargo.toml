@@ -22,6 +22,7 @@ frodo-storage = { path = "../frodo-storage" }
 toml.workspace = true
 frodo-agent = { path = "../frodo-agent" }
 frodo-task = { path = "../frodo-task" }
+frodo-sync = { path = "../frodo-sync" }
 uuid.workspace = true
 
 [dev-dependencies]

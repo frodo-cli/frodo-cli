@@ -14,6 +14,10 @@ pub struct Config {
     pub data_dir: Option<PathBuf>,
     /// Agent provider config (future expansion).
     pub openai: Option<OpenAiConfig>,
+    /// Jira configuration (optional).
+    pub jira: Option<frodo_sync::JiraConfig>,
+    /// GitHub configuration (optional).
+    pub github: Option<frodo_sync::GitHubConfig>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, Default, PartialEq, Eq)]
@@ -83,6 +87,15 @@ mod tests {
             api_key = "secret"
             model = "gpt-4.2"
             endpoint = "https://api.openai.com/v1"
+            [jira]
+            site = "https://example.atlassian.net"
+            project_key = "PROJ"
+            api_token = "token"
+            email = "user@example.com"
+            [github]
+            owner = "acme"
+            repo = "proj"
+            token = "ghp_xxx"
         "#;
         let dir = tempfile::tempdir().expect("tempdir");
         let path = dir.path().join("config.toml");
@@ -98,6 +111,17 @@ mod tests {
                     model: Some("gpt-4.2".into()),
                     endpoint: Some("https://api.openai.com/v1".into()),
                 }),
+                jira: Some(frodo_sync::JiraConfig {
+                    site: "https://example.atlassian.net".into(),
+                    project_key: "PROJ".into(),
+                    api_token: "token".into(),
+                    email: "user@example.com".into(),
+                }),
+                github: Some(frodo_sync::GitHubConfig {
+                    owner: "acme".into(),
+                    repo: "proj".into(),
+                    token: "ghp_xxx".into(),
+                }),
             }
         );
     }
@@ -109,6 +133,8 @@ mod tests {
         let cfg = Config {
             data_dir: Some(PathBuf::from("/tmp/frodo-data")),
             openai: None,
+            jira: None,
+            github: None,
         };
 
         write_to_path_if_missing(&cfg, &path).expect("write should succeed");

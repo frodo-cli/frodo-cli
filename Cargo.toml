@@ -5,6 +5,7 @@ members = [
     "crates/frodo-storage",
     "crates/frodo-agent",
     "crates/frodo-task",
+    "crates/frodo-sync",
 ]
 resolver = "2"
 
