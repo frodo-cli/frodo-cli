@@ -15,10 +15,11 @@ use ratatui::{
     widgets::{Block, BorderType, Borders, List, ListItem, Paragraph},
     Terminal,
 };
+use uuid::Uuid;
 
-/// Minimal TUI that renders tasks and allows marking them done with `d` (view-only).
+/// Minimal TUI that renders tasks and allows marking them done with `d` (persists via callback).
 /// Press `q` or `Esc` to exit.
-pub fn launch(tasks: &[Task]) -> Result<()> {
+pub fn launch(tasks: &[Task], mut on_mark_done: impl FnMut(Uuid, TaskStatus)) -> Result<()> {
     // Guard restores the terminal even if we early-return.
     let _guard = TerminalGuard::enter()?;
     let mut terminal = _guard.terminal()?;
@@ -101,10 +102,11 @@ pub fn launch(tasks: &[Task]) -> Result<()> {
                 match key.code {
                     KeyCode::Char('q') | KeyCode::Esc => break,
                     KeyCode::Char('d') => {
-                        // Mark first non-done task as done (view-only for now).
+                        // Mark first non-done task as done.
                         if let Some(next) = tasks.iter_mut().find(|t| t.status != TaskStatus::Done)
                         {
                             next.status = TaskStatus::Done;
+                            on_mark_done(next.id, TaskStatus::Done);
                         }
                     }
                     _ => {}

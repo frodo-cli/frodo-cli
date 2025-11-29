@@ -31,8 +31,19 @@ async fn main() -> Result<()> {
     let config = config::load()?;
     match cli.command.unwrap_or(cli::Command::Tui) {
         cli::Command::Tui => {
-            let tasks = load_tasks(&config).await?;
-            tui::launch(&tasks)?
+            let store = storage::store_from_config(&config)?;
+            let repo: Arc<SecureStoreTaskRepo<_>> = Arc::new(SecureStoreTaskRepo::new(store));
+            let tasks = repo
+                .list()
+                .await
+                .map_err(|e| color_eyre::eyre::eyre!(e.to_string()))?;
+            let handle = tokio::runtime::Handle::current();
+            tui::launch(&tasks, move |id, status| {
+                let repo = repo.clone();
+                let _ = handle.block_on(async move {
+                    let _ = repo.set_status(id, status).await;
+                });
+            })?
         }
         cli::Command::Version => print_version(),
         cli::Command::Health => run_health_check(&config).await?,
