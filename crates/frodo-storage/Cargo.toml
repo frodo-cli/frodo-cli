@@ -1,0 +1,22 @@
+[package]
+name = "frodo-storage"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+aes-gcm.workspace = true
+anyhow.workspace = true
+base64.workspace = true
+frodo-core = { path = "../frodo-core" }
+keyring.workspace = true
+rand.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+async-trait.workspace = true
+tempfile.workspace = true

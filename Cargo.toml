@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/frodo-cli", "crates/frodo-core"]
+members = ["crates/frodo-cli", "crates/frodo-core", "crates/frodo-storage"]
 resolver = "2"
 
 [workspace.package]
@@ -19,3 +19,8 @@ tracing-subscriber = { version = "0.3.18", features = ["env-filter", "fmt"] }
 async-trait = "0.1.89"
 thiserror = "2.0.17"
 serde_json = "1.0.145"
+aes-gcm = { version = "0.10.3", features = ["aes"] }
+rand = "0.8.5"
+base64 = "0.22.1"
+keyring = "3.6.3"
+tempfile = "3.23.0"
