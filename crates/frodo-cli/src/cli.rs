@@ -20,6 +20,8 @@ pub enum Command {
     Tui,
     /// Print version and exit.
     Version,
+    /// Run a health check against core subsystems (storage, config).
+    Health,
 }
 
 #[cfg(test)]
@@ -36,5 +38,11 @@ mod tests {
     fn defaults_to_tui_when_missing_subcommand() {
         let cli = Cli::try_parse_from(["frodo"]).expect("parse should succeed");
         assert_eq!(cli.command, None);
+    }
+
+    #[test]
+    fn parses_health_subcommand() {
+        let cli = Cli::try_parse_from(["frodo", "health"]).expect("parse should succeed");
+        assert_eq!(cli.command, Some(Command::Health));
     }
 }
