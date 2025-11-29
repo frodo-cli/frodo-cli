@@ -1,4 +1,4 @@
-# frodo-cli
+# frodo-cli ![CI](https://github.com/frodo-cli/frodo-cli/actions/workflows/ci.yml/badge.svg)
 
 Local-first developer companion CLI. Current capabilities:
 - Encrypted storage (AES-GCM, keys in OS keychain)
