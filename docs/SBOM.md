@@ -11,10 +11,13 @@ This SBOM tracks the crates currently declared in the workspace and the rational
 | tokio | 1.48.0 | Async runtime | `macros`, `rt-multi-thread` features |
 | tracing | 0.1.41 | Structured logging | |
 | tracing-subscriber | 0.3.18 | Logging subscriber with env filter | `env-filter`, `fmt` |
+| async-trait | 0.1.89 | Async trait support for agent/storage contracts | Maintained |
+| thiserror | 2.0.17 | Error derivation for typed errors | Stable |
+| serde_json | 1.0.145 | JSON helper for agent payloads/tests | Stable |
 | ratatui | 0.29.0 | Terminal UI rendering | Latest stable (0.30 is beta) |
 | crossterm | 0.29.0 | Cross-platform terminal I/O backend | Matches ratatui stack |
 
-Planned additions (will be added alongside tests when implemented): `reqwest`, `oauth2`, `sqlx` (SQLite with SQLCipher or app-layer AES-GCM), `keyring`, `async-openai`, `serde_json`, `insta`, `assert_cmd`, `httpmock`, `proptest`.
+Planned additions (will be added alongside tests when implemented): `reqwest`, `oauth2`, `sqlx` (SQLite with SQLCipher or app-layer AES-GCM), `keyring`, `async-openai`, `insta`, `assert_cmd`, `httpmock`, `proptest`.
 
 ## Regeneration
 - Produce a fresh SBOM tree (after adding crates): `cargo tree --workspace > target/sbom.txt` (commit the text file only when meaningful; keep this doc as the human-friendly summary).

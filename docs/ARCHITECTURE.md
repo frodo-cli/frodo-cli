@@ -4,7 +4,7 @@ Frodo CLI is a local-first, encrypted developer companion that stays usable offl
 
 ## Layering
 - **CLI/TUI** (`crates/frodo-cli/src`): command parser (Clap) plus Ratatui-based UI. Thin layer that delegates to services; defaults to `frodo tui`.
-- **Core domain** (planned `crates/core`): task, conversation, message, workspace models; prioritization logic; validation.
+- **Core domain & contracts** (`crates/frodo-core`): shared models and traits (agent interface, secure store contract/stub); future home for task/conversation/workspace models and prioritization logic.
 - **Storage** (planned `crates/storage`): encrypted local store (SQLite + SQLCipher or app-layer AES-GCM) with a change journal for offline edits; key wrapping via OS keychain; migration tooling.
 - **Sync** (planned `crates/sync`): reconciles local journal with Jira/GitHub Issues; conflict policy (latest-write with surfaced diffs); offline queue and retry.
 - **Agents** (planned `crates/agent`): provider-agnostic `Agent` + tool-calling; OpenAI default, pluggable local/remote providers; context builders (tasks, git status, transcripts) with strict budgets.
@@ -24,6 +24,7 @@ Frodo CLI is a local-first, encrypted developer companion that stays usable offl
 
 ## Folder Structure (initial)
 - `Cargo.toml` — workspace manifest and shared dependency versions.
+- `crates/frodo-core` — shared contracts (agent, secure store stub) and future domain models.
 - `crates/frodo-cli` — binary crate for CLI/TUI entry.
 - `docs/` — architecture and SBOM (dependency bill of materials).
 - `AGENTS` — agent behavior and safety contract.
