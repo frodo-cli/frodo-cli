@@ -4,17 +4,12 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 /// Task status lifecycle.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub enum TaskStatus {
+    #[default]
     Todo,
     InProgress,
     Done,
-}
-
-impl Default for TaskStatus {
-    fn default() -> Self {
-        TaskStatus::Todo
-    }
 }
 
 /// Task entity.
