@@ -1,6 +1,7 @@
 mod cli;
 mod config;
 mod storage;
+mod sync;
 mod tasks;
 mod tui;
 
@@ -38,6 +39,7 @@ async fn main() -> Result<()> {
         cli::Command::Config(ConfigCommand::Init) => init_config(&config)?,
         cli::Command::Ask { prompt } => run_ask(prompt, &config).await?,
         cli::Command::Task(cmd) => tasks::handle(cmd, &config).await?,
+        cli::Command::Sync => sync::run(&config).await?,
     }
 
     Ok(())

@@ -31,6 +31,8 @@ pub enum Command {
         #[arg(required = true)]
         prompt: Vec<String>,
     },
+    /// Sync tasks with remote providers (Jira/GitHub) — currently a stub.
+    Sync,
     /// Manage tasks.
     #[command(subcommand)]
     Task(TaskCommand),
@@ -135,5 +137,11 @@ mod tests {
             cli.command,
             Some(Command::Task(TaskCommand::Done { id: "123".into() }))
         );
+    }
+
+    #[test]
+    fn parses_sync_subcommand() {
+        let cli = Cli::try_parse_from(["frodo", "sync"]).expect("parse ok");
+        assert_eq!(cli.command, Some(Command::Sync));
     }
 }
