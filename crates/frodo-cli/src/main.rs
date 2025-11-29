@@ -3,6 +3,7 @@ mod config;
 mod storage;
 mod tui;
 
+use crate::cli::ConfigCommand;
 use clap::Parser;
 use color_eyre::Result;
 use frodo_core::storage::SecureStore;
@@ -21,6 +22,7 @@ async fn main() -> Result<()> {
         cli::Command::Tui => tui::launch()?,
         cli::Command::Version => print_version(),
         cli::Command::Health => run_health_check(&config).await?,
+        cli::Command::Config(ConfigCommand::Init) => init_config(&config)?,
     }
 
     Ok(())
@@ -67,6 +69,12 @@ async fn run_store_health<S: SecureStore>(store: &S) -> Result<()> {
     if round_trip != payload {
         color_eyre::eyre::bail!("storage round-trip failed");
     }
+    Ok(())
+}
+
+fn init_config(config: &config::Config) -> Result<()> {
+    let path = config::write_default_if_missing(config)?;
+    println!("Config initialized at {}", path.display());
     Ok(())
 }
 

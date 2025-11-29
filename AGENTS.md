@@ -59,6 +59,7 @@ This file defines how Frodo’s AI agents work, what they can access, and how to
 ## Security & Privacy
 - Encryption: all agent transcripts, cached context, and secrets encrypted at rest using AES-GCM; data keys wrapped by the OS keychain (Keyring) and never logged.
 - Health checks: `frodo health` verifies the encrypted store and keychain access before agents rely on persisted state.
+- Config: use `config init` to scaffold `~/.config/frodo/config.toml`; agents should read provider settings (e.g., OpenAI endpoint/model) from there when present.
 - No unapproved uploads: only the minimal context required for the request is sent to remote providers.
 - Redaction: strip obvious secrets (tokens, keys, emails) from prompts/logs.
 - Logging: structured debug logs, but never persist full prompts in plaintext.

@@ -22,6 +22,15 @@ pub enum Command {
     Version,
     /// Run a health check against core subsystems (storage, config).
     Health,
+    /// Manage CLI configuration.
+    #[command(subcommand)]
+    Config(ConfigCommand),
+}
+
+#[derive(Subcommand, Debug, Clone, PartialEq, Eq)]
+pub enum ConfigCommand {
+    /// Create a default config file if one does not exist.
+    Init,
 }
 
 #[cfg(test)]
@@ -44,5 +53,11 @@ mod tests {
     fn parses_health_subcommand() {
         let cli = Cli::try_parse_from(["frodo", "health"]).expect("parse should succeed");
         assert_eq!(cli.command, Some(Command::Health));
+    }
+
+    #[test]
+    fn parses_config_init_subcommand() {
+        let cli = Cli::try_parse_from(["frodo", "config", "init"]).expect("parse should succeed");
+        assert_eq!(cli.command, Some(Command::Config(ConfigCommand::Init)));
     }
 }

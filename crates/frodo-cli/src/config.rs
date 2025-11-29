@@ -5,10 +5,10 @@ use std::{
 
 use color_eyre::Result;
 use dirs::config_dir;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 /// User-level configuration loaded from `~/.config/frodo/config.toml` (platform-specific).
-#[derive(Debug, Clone, Deserialize, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Deserialize, Serialize, Default, PartialEq, Eq)]
 pub struct Config {
     /// Override for data directory (encrypted store).
     pub data_dir: Option<PathBuf>,
@@ -16,7 +16,7 @@ pub struct Config {
     pub openai: Option<OpenAiConfig>,
 }
 
-#[derive(Debug, Clone, Deserialize, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Deserialize, Serialize, Default, PartialEq, Eq)]
 pub struct OpenAiConfig {
     pub api_key: Option<String>,
     pub model: Option<String>,
@@ -47,6 +47,21 @@ pub fn load_from_path(path: impl AsRef<Path>) -> Result<Config> {
 pub fn default_path() -> Result<PathBuf> {
     let base = config_dir().ok_or_else(|| color_eyre::eyre::eyre!("no config dir available"))?;
     Ok(base.join("frodo").join("config.toml"))
+}
+
+/// Write the given config to disk, creating parent directories as needed.
+/// Will error if the file already exists, to avoid clobbering user edits.
+pub fn write_default_if_missing(config: &Config) -> Result<PathBuf> {
+    let path = default_path()?;
+    if path.exists() {
+        return Ok(path);
+    }
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    let body = toml::to_string_pretty(config)?;
+    fs::write(&path, body)?;
+    Ok(path)
 }
 
 #[cfg(test)]
@@ -85,5 +100,34 @@ mod tests {
                 }),
             }
         );
+    }
+
+    #[test]
+    fn write_default_creates_file_once() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join("config.toml");
+        let cfg = Config {
+            data_dir: Some(PathBuf::from("/tmp/frodo-data")),
+            openai: None,
+        };
+
+        write_to_path_if_missing(&cfg, &path).expect("write should succeed");
+        let second = write_to_path_if_missing(&cfg, &path).expect("second write ok");
+        assert_eq!(second, path);
+        let loaded: Config =
+            toml::from_str(&fs::read_to_string(&path).expect("read")).expect("parse");
+        assert_eq!(loaded, cfg);
+    }
+
+    fn write_to_path_if_missing(config: &Config, path: &Path) -> Result<PathBuf> {
+        if path.exists() {
+            return Ok(path.to_path_buf());
+        }
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        let body = toml::to_string_pretty(config)?;
+        fs::write(path, body)?;
+        Ok(path.to_path_buf())
     }
 }
