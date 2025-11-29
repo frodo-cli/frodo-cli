@@ -16,7 +16,7 @@ use ratatui::{
     Terminal,
 };
 
-/// Minimal TUI that renders tasks and allows marking them done with `d`.
+/// Minimal TUI that renders tasks and allows marking them done with `d` (view-only).
 /// Press `q` or `Esc` to exit.
 pub fn launch(tasks: &[Task]) -> Result<()> {
     // Guard restores the terminal even if we early-return.
@@ -101,7 +101,7 @@ pub fn launch(tasks: &[Task]) -> Result<()> {
                 match key.code {
                     KeyCode::Char('q') | KeyCode::Esc => break,
                     KeyCode::Char('d') => {
-                        // Mark first non-done task as done for now (placeholder until storage mutation is wired).
+                        // Mark first non-done task as done (view-only for now).
                         if let Some(next) = tasks.iter_mut().find(|t| t.status != TaskStatus::Done)
                         {
                             next.status = TaskStatus::Done;
