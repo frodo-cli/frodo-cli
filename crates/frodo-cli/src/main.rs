@@ -1,6 +1,7 @@
 mod cli;
 mod config;
 mod storage;
+mod tasks;
 mod tui;
 
 use crate::cli::ConfigCommand;
@@ -31,6 +32,7 @@ async fn main() -> Result<()> {
         cli::Command::Health => run_health_check(&config).await?,
         cli::Command::Config(ConfigCommand::Init) => init_config(&config)?,
         cli::Command::Ask { prompt } => run_ask(prompt, &config).await?,
+        cli::Command::Task(cmd) => tasks::handle(cmd, &config).await?,
     }
 
     Ok(())

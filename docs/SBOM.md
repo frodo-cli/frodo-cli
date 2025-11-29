@@ -23,6 +23,8 @@ This SBOM tracks the crates currently declared in the workspace and the rational
 | toml | 0.9.8 | Config file parsing | Latest stable |
 | async-openai | 0.31.1 | OpenAI API client (chat completions) | Features: `chat-completion`, `rustls` default |
 | reqwest | 0.12.24 | HTTP client (used by async-openai) | Features: `rustls-tls-native-roots` |
+| uuid | 1.18.1 | Task/ID generation | Features: `serde`, `v4` |
+| chrono | 0.4.42 | Timestamps for tasks | Features: `serde`, `clock` |
 | ratatui | 0.29.0 | Terminal UI rendering | Latest stable (0.30 is beta) |
 | crossterm | 0.29.0 | Cross-platform terminal I/O backend | Matches ratatui stack |
 

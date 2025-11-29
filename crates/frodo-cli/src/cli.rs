@@ -31,12 +31,37 @@ pub enum Command {
         #[arg(required = true)]
         prompt: Vec<String>,
     },
+    /// Manage tasks.
+    #[command(subcommand)]
+    Task(TaskCommand),
 }
 
 #[derive(Subcommand, Debug, Clone, PartialEq, Eq)]
 pub enum ConfigCommand {
     /// Create a default config file if one does not exist.
     Init,
+}
+
+#[derive(Subcommand, Debug, Clone, PartialEq, Eq)]
+pub enum TaskCommand {
+    /// List tasks.
+    List,
+    /// Add a new task.
+    Add {
+        /// Title for the task.
+        title: String,
+        /// Optional description.
+        #[arg(short, long)]
+        description: Option<String>,
+        /// Tags for grouping (repeat flag).
+        #[arg(short, long)]
+        tag: Vec<String>,
+    },
+    /// Mark a task as done.
+    Done {
+        /// Task id (UUID).
+        id: String,
+    },
 }
 
 #[cfg(test)]
@@ -75,6 +100,40 @@ mod tests {
             Some(Command::Ask {
                 prompt: vec!["hello".into(), "world".into()]
             })
+        );
+    }
+
+    #[test]
+    fn parses_task_add() {
+        let cli = Cli::try_parse_from([
+            "frodo",
+            "task",
+            "add",
+            "title",
+            "--description",
+            "desc",
+            "--tag",
+            "one",
+            "--tag",
+            "two",
+        ])
+        .expect("parse ok");
+        assert_eq!(
+            cli.command,
+            Some(Command::Task(TaskCommand::Add {
+                title: "title".into(),
+                description: Some("desc".into()),
+                tag: vec!["one".into(), "two".into()],
+            }))
+        );
+    }
+
+    #[test]
+    fn parses_task_done() {
+        let cli = Cli::try_parse_from(["frodo", "task", "done", "123"]).expect("parse ok");
+        assert_eq!(
+            cli.command,
+            Some(Command::Task(TaskCommand::Done { id: "123".into() }))
         );
     }
 }
