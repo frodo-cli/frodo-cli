@@ -5,8 +5,9 @@ Local-first developer companion CLI. Current capabilities:
 - Tasks: `task add/list/done` (encrypted)
 - Ask: `ask "<prompt>"` (OpenAI if configured, otherwise Echo)
 - TUI: `tui` (navigate j/k, mark done with `d`, quit with `q`/Esc)
-- Sync stub: `sync` (selects GitHub/Jira/noop based on config)
+- Sync: `sync` (GitHub/Jira pulls; push on `--apply`; otherwise dry-run)
 - Health/config: `health`, `config init`
+- Self-update: `self-update` (checks/downlods latest GitHub release; `--check` for dry-run)
 
 ## Quickstart
 ```bash
@@ -14,7 +15,10 @@ cargo run -- config init          # create ~/.config/frodo/config.toml if missin
 cargo run -- task add "example"   # add a task
 cargo run -- tui                  # view tasks, j/k to move, d to mark done
 cargo run -- ask "what next?"     # uses tasks as context
-cargo run -- sync                 # stub sync (reports counts)
+cargo run -- sync                 # dry-run pull/push (GitHub/Jira/noop from config)
+cargo run -- sync --apply         # applies push (creates issues)
+cargo run -- self-update --check  # check for newer release
+cargo run -- self-update          # download & replace binary
 cargo run -- health               # check encrypted store/keyring
 ```
 
