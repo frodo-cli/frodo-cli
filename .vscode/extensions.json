@@ -4,6 +4,6 @@
     "rust-lang.rust-analyzer", // Rust language support (maintained, replaces deprecated Rust extension)
     "vadimcn.vscode-lldb", // Debugger for Rust binaries across platforms
     "tamasfe.even-better-toml", // TOML syntax + linting for Cargo files
-    "serayuzgur.crates" // Crate version hints and updates
+    "yoavbls.dependi" // Modern dependency version helper (replaces deprecated crates extension)
   ]
 }
