@@ -6,12 +6,15 @@ mod tui;
 use crate::cli::ConfigCommand;
 use clap::Parser;
 use color_eyre::Result;
+use frodo_agent::openai::{OpenAiAgent, OpenAiSettings};
 use frodo_core::{
     agent::{Agent, AgentContext, AgentRequest, AgentResponse, EchoAgent},
     storage::SecureStore,
 };
 use frodo_storage::secure_file_store::EncryptedFileStore;
 use std::collections::BTreeMap;
+use std::sync::Arc;
+use tracing::warn;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
 /// Entry point wiring the CLI to the (placeholder) TUI.
@@ -85,16 +88,19 @@ fn init_config(config: &config::Config) -> Result<()> {
 
 async fn run_ask(prompt: Vec<String>, config: &config::Config) -> Result<()> {
     let prompt_text = prompt.join(" ");
-    let agent = build_agent(config);
-    let response = ask_with_agent(&agent, prompt_text).await?;
-    println!("{}", response.message.content);
+    let (agent_name, agent) = build_agent(config)?;
+    let response = ask_with_agent(agent.as_ref(), prompt_text).await?;
+    println!("[{agent_name}] {}", response.message.content);
     if let Some(summary) = response.summary {
         println!("\nSummary: {summary}");
     }
     Ok(())
 }
 
-async fn ask_with_agent<A: Agent>(agent: &A, prompt: String) -> Result<AgentResponse> {
+async fn ask_with_agent(
+    agent: &(dyn Agent + Send + Sync),
+    prompt: String,
+) -> Result<AgentResponse> {
     let request = AgentRequest {
         prompt,
         conversation_id: None,
@@ -109,8 +115,39 @@ async fn ask_with_agent<A: Agent>(agent: &A, prompt: String) -> Result<AgentResp
         .map_err(|e| color_eyre::eyre::eyre!(e.to_string()))
 }
 
-fn build_agent(_config: &config::Config) -> EchoAgent {
-    EchoAgent
+fn build_agent(config: &config::Config) -> Result<(String, Arc<dyn Agent + Send + Sync>)> {
+    if let Some(settings) = resolve_openai_settings(config) {
+        match OpenAiAgent::new(settings.clone()) {
+            Ok(agent) => return Ok((agent.name().to_string(), Arc::new(agent))),
+            Err(err) => warn!("failed to init OpenAI agent, falling back to echo: {err}"),
+        }
+    }
+
+    let agent = EchoAgent;
+    Ok((agent.name().to_string(), Arc::new(agent)))
+}
+
+fn resolve_openai_settings(config: &config::Config) -> Option<OpenAiSettings> {
+    let key = config
+        .openai
+        .as_ref()
+        .and_then(|c| c.api_key.clone())
+        .or_else(|| std::env::var("FRODO_OPENAI_API_KEY").ok())
+        .or_else(|| std::env::var("OPENAI_API_KEY").ok());
+
+    let model = config
+        .openai
+        .as_ref()
+        .and_then(|c| c.model.clone())
+        .unwrap_or_else(|| "gpt-4o-mini".to_string());
+
+    let api_base = config.openai.as_ref().and_then(|c| c.endpoint.clone());
+
+    key.map(|api_key| OpenAiSettings {
+        api_key,
+        model,
+        api_base,
+    })
 }
 
 #[cfg(test)]

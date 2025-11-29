@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/frodo-cli", "crates/frodo-core", "crates/frodo-storage"]
+members = ["crates/frodo-cli", "crates/frodo-core", "crates/frodo-storage", "crates/frodo-agent"]
 resolver = "2"
 
 [workspace.package]
@@ -26,3 +26,5 @@ keyring = "3.6.3"
 tempfile = "3.23.0"
 dirs = "6.0.0"
 toml = "0.9.8"
+async-openai = { version = "0.31.1", features = ["chat-completion"] }
+reqwest = { version = "0.12.24", default-features = false, features = ["rustls-tls-native-roots"] }

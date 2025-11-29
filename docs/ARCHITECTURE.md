@@ -3,11 +3,11 @@
 Frodo CLI is a local-first, encrypted developer companion that stays usable offline, auto-syncs when online, and speaks with a human-like agent. The codebase is organized as a Rust workspace to keep CLI/TUI, domain, storage, and integrations modular and testable.
 
 ## Layering
-- **CLI/TUI** (`crates/frodo-cli/src`): command parser (Clap) plus Ratatui-based UI. Thin layer that delegates to services; defaults to `frodo tui`. Includes `frodo health` to verify encrypted storage/keyring availability, `config init` to scaffold `~/.config/frodo/config.toml` (platform aware), and `frodo ask` (currently using a local `EchoAgent` stub until OpenAI/local providers are wired).
+- **CLI/TUI** (`crates/frodo-cli/src`): command parser (Clap) plus Ratatui-based UI. Thin layer that delegates to services; defaults to `frodo tui`. Includes `frodo health` to verify encrypted storage/keyring availability, `config init` to scaffold `~/.config/frodo/config.toml` (platform aware), and `frodo ask` (prefers OpenAI when configured, falls back to `EchoAgent`).
 - **Core domain & contracts** (`crates/frodo-core`): shared models and traits (agent interface, secure store contract/stub); future home for task/conversation/workspace models and prioritization logic.
 - **Storage** (`crates/frodo-storage`): encrypted local store (AES-GCM with keys in OS keychain; future SQLite + SQLCipher or app-layer AES-GCM) with a change journal for offline edits; key wrapping via OS keychain; migration tooling.
 - **Sync** (planned `crates/sync`): reconciles local journal with Jira/GitHub Issues; conflict policy (latest-write with surfaced diffs); offline queue and retry.
-- **Agents** (planned `crates/agent`): provider-agnostic `Agent` + tool-calling; OpenAI default, pluggable local/remote providers; context builders (tasks, git status, transcripts) with strict budgets.
+- **Agents** (`crates/frodo-agent`): provider implementations (OpenAI chat completions, rustls transport); future local/offline providers and tool-calling.
 - **Integrations** (planned `crates/integrations`): Jira and GitHub adapters using HTTP clients with mocked tests; auth via GitHub OAuth (device flow) and Jira tokens.
 - **Plugins** (future): Wasm/exec hooks for new tools/providers with capability gating.
 
@@ -26,6 +26,7 @@ Frodo CLI is a local-first, encrypted developer companion that stays usable offl
 - `Cargo.toml` — workspace manifest and shared dependency versions.
 - `crates/frodo-core` — shared contracts (agent, secure store stub) and future domain models.
 - `crates/frodo-storage` — concrete encrypted store implementations.
+- `crates/frodo-agent` — agent providers (OpenAI now; local/offline later).
 - `crates/frodo-cli` — binary crate for CLI/TUI entry.
 - `docs/` — architecture and SBOM (dependency bill of materials).
 - `AGENTS` — agent behavior and safety contract.

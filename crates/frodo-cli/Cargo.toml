@@ -20,6 +20,7 @@ dirs.workspace = true
 frodo-core = { path = "../frodo-core" }
 frodo-storage = { path = "../frodo-storage" }
 toml.workspace = true
+frodo-agent = { path = "../frodo-agent" }
 
 [dev-dependencies]
 tempfile.workspace = true

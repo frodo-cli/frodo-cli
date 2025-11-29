@@ -39,7 +39,8 @@ This file defines how Frodo’s AI agents work, what they can access, and how to
 - `Policy`: safety hooks (max tokens, rate limits, allowlist of tools).
 
 ## Providers
-- Default: OpenAI (use latest `async-openai` crate version; verify against docs before each update). Until wired, CLI uses a local `EchoAgent` stub for `frodo ask`.
+- Default: OpenAI (use latest `async-openai` crate version; verify against docs before each update). CLI prefers OpenAI when `openai.api_key` is set in config or `FRODO_OPENAI_API_KEY`/`OPENAI_API_KEY` are present; otherwise falls back to local `EchoAgent`.
+- Default model: `gpt-4o-mini` (may be overridden in config).
 - Local: `llama.cpp`/GGML-backed provider (binary or library mode), for offline mode.
 - Stub: deterministic fake for tests.
 - Config: endpoint, model id, api key, timeouts, max tokens, temperature; pulled from config file + env; secrets kept in keychain when possible.
