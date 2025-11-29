@@ -40,6 +40,12 @@ pub enum Command {
     /// Manage tasks.
     #[command(subcommand)]
     Task(TaskCommand),
+    /// Self update from the latest GitHub release.
+    SelfUpdate {
+        /// Only check for updates, do not install.
+        #[arg(long)]
+        check: bool,
+    },
 }
 
 #[derive(Subcommand, Debug, Clone, PartialEq, Eq)]
@@ -153,5 +159,11 @@ mod tests {
     fn parses_sync_apply_flag() {
         let cli = Cli::try_parse_from(["frodo", "sync", "--apply"]).expect("parse ok");
         assert_eq!(cli.command, Some(Command::Sync { apply: true }));
+    }
+
+    #[test]
+    fn parses_self_update_check() {
+        let cli = Cli::try_parse_from(["frodo", "self-update", "--check"]).expect("parse ok");
+        assert_eq!(cli.command, Some(Command::SelfUpdate { check: true }));
     }
 }

@@ -24,6 +24,9 @@ frodo-agent = { path = "../frodo-agent" }
 frodo-task = { path = "../frodo-task" }
 frodo-sync = { path = "../frodo-sync" }
 uuid.workspace = true
+tar.workspace = true
+flate2.workspace = true
+tempfile.workspace = true
+reqwest.workspace = true
 
 [dev-dependencies]
-tempfile.workspace = true

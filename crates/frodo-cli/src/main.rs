@@ -4,6 +4,7 @@ mod storage;
 mod sync;
 mod tasks;
 mod tui;
+mod update;
 
 use crate::cli::ConfigCommand;
 use clap::Parser;
@@ -51,6 +52,7 @@ async fn main() -> Result<()> {
         cli::Command::Ask { prompt } => run_ask(prompt, &config).await?,
         cli::Command::Task(cmd) => tasks::handle(cmd, &config).await?,
         cli::Command::Sync { apply } => sync::run(&config, apply).await?,
+        cli::Command::SelfUpdate { check } => update::run(check).await?,
     }
 
     Ok(())
