@@ -9,9 +9,13 @@ use crate::config;
 use crate::storage;
 
 /// Placeholder sync handler. Uses a no-op sync provider for now.
-pub async fn run(cfg: &config::Config) -> Result<()> {
+pub async fn run(cfg: &config::Config, apply: bool) -> Result<()> {
     let provider = select_provider(cfg);
-    info!("sync invoked (provider: {})", provider.name());
+    info!(
+        "sync invoked (provider: {}, apply={})",
+        provider.name(),
+        apply
+    );
     println!("Sync is not yet implemented. Planned targets:");
     println!("- Jira: configure project/site and token (todo)");
     println!("- GitHub Issues: derive from git remotes and token (todo)");
@@ -29,10 +33,15 @@ pub async fn run(cfg: &config::Config) -> Result<()> {
         .await
         .map_err(|e| color_eyre::eyre::eyre!(e.to_string()))?;
     println!("Local tasks: {}", local.len());
-    provider
-        .push(&[])
-        .await
-        .map_err(|e| color_eyre::eyre::eyre!(e.to_string()))?;
+    if apply {
+        provider
+            .push(&[])
+            .await
+            .map_err(|e| color_eyre::eyre::eyre!(e.to_string()))?;
+        println!("Applied push (stub).");
+    } else {
+        println!("Dry run: not pushing changes.");
+    }
     Ok(())
 }
 

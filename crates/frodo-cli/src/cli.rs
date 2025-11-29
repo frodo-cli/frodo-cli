@@ -32,7 +32,11 @@ pub enum Command {
         prompt: Vec<String>,
     },
     /// Sync tasks with remote providers (Jira/GitHub) — currently a stub.
-    Sync,
+    Sync {
+        /// Apply changes (otherwise dry-run).
+        #[arg(long)]
+        apply: bool,
+    },
     /// Manage tasks.
     #[command(subcommand)]
     Task(TaskCommand),
@@ -142,6 +146,12 @@ mod tests {
     #[test]
     fn parses_sync_subcommand() {
         let cli = Cli::try_parse_from(["frodo", "sync"]).expect("parse ok");
-        assert_eq!(cli.command, Some(Command::Sync));
+        assert_eq!(cli.command, Some(Command::Sync { apply: false }));
+    }
+
+    #[test]
+    fn parses_sync_apply_flag() {
+        let cli = Cli::try_parse_from(["frodo", "sync", "--apply"]).expect("parse ok");
+        assert_eq!(cli.command, Some(Command::Sync { apply: true }));
     }
 }
