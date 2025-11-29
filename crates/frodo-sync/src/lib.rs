@@ -91,7 +91,7 @@ impl JiraSync {
         self.cfg
             .base_url
             .as_deref()
-            .unwrap_or_else(|| self.cfg.site.as_str())
+            .unwrap_or(self.cfg.site.as_str())
             .trim_end_matches('/')
             .to_string()
     }
