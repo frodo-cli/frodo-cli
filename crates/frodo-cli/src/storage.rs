@@ -39,6 +39,7 @@ pub fn store_from_config(config: &Config) -> Result<EncryptedFileStore<KeyringPr
 }
 
 /// Helper for tests to construct a store rooted at a temp dir with an in-memory key.
+#[cfg(test)]
 pub fn test_store(root: impl Into<PathBuf>) -> EncryptedFileStore<InMemoryKeyProvider> {
     EncryptedFileStore::new(root, InMemoryKeyProvider::default())
 }
