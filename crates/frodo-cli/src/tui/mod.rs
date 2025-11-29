@@ -24,6 +24,7 @@ pub fn launch(tasks: &[Task], mut on_mark_done: impl FnMut(Uuid, TaskStatus)) ->
     let _guard = TerminalGuard::enter()?;
     let mut terminal = _guard.terminal()?;
     let mut tasks = tasks.to_owned();
+    let mut selected = 0usize;
 
     loop {
         terminal.draw(|frame| {
@@ -61,7 +62,8 @@ pub fn launch(tasks: &[Task], mut on_mark_done: impl FnMut(Uuid, TaskStatus)) ->
 
             let items: Vec<ListItem> = tasks
                 .iter()
-                .map(|t| {
+                .enumerate()
+                .map(|(idx, t)| {
                     let mut line = vec![
                         Span::styled(
                             status_label(&t.status),
@@ -75,7 +77,16 @@ pub fn launch(tasks: &[Task], mut on_mark_done: impl FnMut(Uuid, TaskStatus)) ->
                     if let Some(desc) = &t.description {
                         line.push(Span::raw(format!(" — {desc}")));
                     }
-                    ListItem::new(Line::from(line))
+                    let mut item = ListItem::new(Line::from(line));
+                    if idx == selected {
+                        item = item.style(
+                            Style::default()
+                                .fg(Color::White)
+                                .bg(Color::DarkGray)
+                                .add_modifier(Modifier::BOLD),
+                        );
+                    }
+                    item
                 })
                 .collect();
 
@@ -89,11 +100,13 @@ pub fn launch(tasks: &[Task], mut on_mark_done: impl FnMut(Uuid, TaskStatus)) ->
             let footer = Paragraph::new(Line::from(vec![
                 Span::raw("Press "),
                 Span::styled("q", Style::default().fg(Color::Cyan)),
-                Span::raw(", "),
-                Span::styled("d", Style::default().fg(Color::Yellow)),
-                Span::raw(" to mark next task done, or "),
+                Span::raw(" or "),
                 Span::styled("Esc", Style::default().fg(Color::Cyan)),
-                Span::raw(" to quit."),
+                Span::raw(" to quit; "),
+                Span::styled("j/k", Style::default().fg(Color::Yellow)),
+                Span::raw(" to move; "),
+                Span::styled("d", Style::default().fg(Color::Green)),
+                Span::raw(" to mark selected done."),
             ]))
             .block(Block::default().borders(Borders::ALL).title("Controls"));
             frame.render_widget(footer, chunks[2]);
@@ -103,12 +116,20 @@ pub fn launch(tasks: &[Task], mut on_mark_done: impl FnMut(Uuid, TaskStatus)) ->
             if let Event::Key(key) = event::read()? {
                 match key.code {
                     KeyCode::Char('q') | KeyCode::Esc => break,
+                    KeyCode::Char('j') | KeyCode::Down => {
+                        if !tasks.is_empty() {
+                            selected = (selected + 1).min(tasks.len().saturating_sub(1));
+                        }
+                    }
+                    KeyCode::Char('k') | KeyCode::Up => {
+                        if !tasks.is_empty() {
+                            selected = selected.saturating_sub(1);
+                        }
+                    }
                     KeyCode::Char('d') => {
-                        // Mark first non-done task as done.
-                        if let Some(next) = tasks.iter_mut().find(|t| t.status != TaskStatus::Done)
-                        {
-                            next.status = TaskStatus::Done;
-                            on_mark_done(next.id, TaskStatus::Done);
+                        if let Some(task) = tasks.get_mut(selected) {
+                            task.status = TaskStatus::Done;
+                            on_mark_done(task.id, TaskStatus::Done);
                         }
                     }
                     _ => {}
