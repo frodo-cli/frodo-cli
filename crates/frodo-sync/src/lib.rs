@@ -1,8 +1,12 @@
 use anyhow::Result;
 use async_trait::async_trait;
-use frodo_core::tasks::Task;
+use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
+use chrono::{DateTime, Utc};
+use frodo_core::tasks::{Task, TaskStatus};
+use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, USER_AGENT};
 use serde::{Deserialize, Serialize};
 use tracing::instrument;
+use uuid::Uuid;
 
 /// High-level sync contract for pulling/pushing tasks to remote providers.
 #[async_trait]
@@ -44,6 +48,8 @@ pub struct JiraConfig {
     pub project_key: String,
     pub api_token: String,
     pub email: String,
+    #[serde(default)]
+    pub base_url: Option<String>,
 }
 
 /// GitHub configuration placeholder.
@@ -52,15 +58,21 @@ pub struct GitHubConfig {
     pub owner: String,
     pub repo: String,
     pub token: String,
+    #[serde(default)]
+    pub api_base: Option<String>,
 }
 
 pub struct JiraSync {
     cfg: JiraConfig,
+    client: reqwest::Client,
 }
 
 impl JiraSync {
     pub fn new(cfg: JiraConfig) -> Self {
-        Self { cfg }
+        Self {
+            cfg,
+            client: reqwest::Client::new(),
+        }
     }
 }
 
@@ -72,8 +84,34 @@ impl TaskSync for JiraSync {
 
     #[instrument(skip_all, fields(site = %self.cfg.site, project = %self.cfg.project_key))]
     async fn pull(&self) -> Result<Vec<Task>> {
-        // Placeholder: integrate Jira REST API here.
-        Ok(Vec::new())
+        let mut headers = HeaderMap::new();
+        headers.insert(USER_AGENT, HeaderValue::from_static("frodo-cli"));
+        let basic = BASE64.encode(format!("{}:{}", self.cfg.email, self.cfg.api_token));
+        headers.insert(
+            AUTHORIZATION,
+            HeaderValue::from_str(&format!("Basic {}", basic))?,
+        );
+
+        let jql = format!("project={}", self.cfg.project_key);
+        let url = format!(
+            "{}/rest/api/3/search",
+            self.cfg
+                .base_url
+                .as_deref()
+                .unwrap_or_else(|| self.cfg.site.as_str())
+                .trim_end_matches('/')
+        );
+        let resp: JiraSearchResponse = self
+            .client
+            .post(&url)
+            .headers(headers)
+            .json(&serde_json::json!({ "jql": jql, "fields": ["summary", "description", "status", "labels", "updated"] }))
+            .send()
+            .await?
+            .error_for_status()?
+            .json()
+            .await?;
+        Ok(resp.issues.into_iter().map(task_from_jira).collect())
     }
 
     #[instrument(skip_all, fields(site = %self.cfg.site, project = %self.cfg.project_key))]
@@ -85,11 +123,15 @@ impl TaskSync for JiraSync {
 
 pub struct GitHubSync {
     cfg: GitHubConfig,
+    client: reqwest::Client,
 }
 
 impl GitHubSync {
     pub fn new(cfg: GitHubConfig) -> Self {
-        Self { cfg }
+        Self {
+            cfg,
+            client: reqwest::Client::new(),
+        }
     }
 }
 
@@ -101,14 +143,123 @@ impl TaskSync for GitHubSync {
 
     #[instrument(skip_all, fields(repo = %self.cfg.repo, owner = %self.cfg.owner))]
     async fn pull(&self) -> Result<Vec<Task>> {
-        // Placeholder: integrate GitHub Issues API here.
-        Ok(Vec::new())
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            AUTHORIZATION,
+            HeaderValue::from_str(&format!("token {}", self.cfg.token))?,
+        );
+        headers.insert(USER_AGENT, HeaderValue::from_static("frodo-cli"));
+        let base = self
+            .cfg
+            .api_base
+            .as_deref()
+            .unwrap_or("https://api.github.com");
+        let url = format!(
+            "{base}/repos/{}/{}/issues?state=all",
+            self.cfg.owner, self.cfg.repo
+        );
+        let issues: Vec<GitHubIssue> = self
+            .client
+            .get(&url)
+            .headers(headers)
+            .send()
+            .await?
+            .error_for_status()?
+            .json()
+            .await?;
+        Ok(issues.into_iter().map(task_from_github).collect())
     }
 
     #[instrument(skip_all, fields(repo = %self.cfg.repo, owner = %self.cfg.owner))]
     async fn push(&self, _tasks: &[Task]) -> Result<()> {
-        // Placeholder: integrate GitHub Issues API here.
+        // TODO: Implement push to GitHub Issues.
         Ok(())
+    }
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct GitHubIssue {
+    title: String,
+    body: Option<String>,
+    state: String,
+    labels: Option<Vec<GitHubLabel>>,
+    updated_at: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct GitHubLabel {
+    name: String,
+}
+
+fn task_from_github(issue: GitHubIssue) -> Task {
+    let updated = issue
+        .updated_at
+        .as_deref()
+        .and_then(|s| DateTime::parse_from_rfc3339(s).ok())
+        .map(|dt| dt.with_timezone(&Utc))
+        .unwrap_or_else(Utc::now);
+    let status = match issue.state.as_str() {
+        "closed" => TaskStatus::Done,
+        _ => TaskStatus::Todo,
+    };
+    Task {
+        id: Uuid::new_v4(),
+        title: issue.title,
+        description: issue.body,
+        tags: issue
+            .labels
+            .unwrap_or_default()
+            .into_iter()
+            .map(|l| l.name)
+            .collect(),
+        status,
+        created_at: updated,
+        updated_at: updated,
+    }
+}
+
+#[derive(Debug, Deserialize)]
+struct JiraSearchResponse {
+    issues: Vec<JiraIssue>,
+}
+
+#[derive(Debug, Deserialize)]
+struct JiraIssue {
+    fields: JiraFields,
+}
+
+#[derive(Debug, Deserialize)]
+struct JiraFields {
+    summary: String,
+    description: Option<String>,
+    status: JiraStatus,
+    #[serde(default)]
+    labels: Vec<String>,
+    #[serde(default)]
+    updated: Option<DateTime<Utc>>,
+}
+
+#[derive(Debug, Deserialize)]
+struct JiraStatus {
+    name: String,
+}
+
+fn task_from_jira(issue: JiraIssue) -> Task {
+    let updated = issue.fields.updated.unwrap_or_else(Utc::now);
+    let status = match issue.fields.status.name.to_lowercase().as_str() {
+        "done" | "closed" | "resolved" => TaskStatus::Done,
+        "in progress" => TaskStatus::InProgress,
+        _ => TaskStatus::Todo,
+    };
+    Task {
+        id: Uuid::new_v4(),
+        title: issue.fields.summary,
+        description: issue.fields.description,
+        tags: issue.fields.labels,
+        status,
+        created_at: updated,
+        updated_at: updated,
     }
 }
 
@@ -131,6 +282,7 @@ mod tests {
             project_key: "PRJ".into(),
             api_token: "t".into(),
             email: "e@example.com".into(),
+            base_url: None,
         });
         assert_eq!(jira.name(), "jira");
 
@@ -138,6 +290,7 @@ mod tests {
             owner: "o".into(),
             repo: "r".into(),
             token: "t".into(),
+            api_base: None,
         });
         assert_eq!(gh.name(), "github");
     }

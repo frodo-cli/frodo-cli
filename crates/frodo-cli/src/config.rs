@@ -116,11 +116,13 @@ mod tests {
                     project_key: "PROJ".into(),
                     api_token: "token".into(),
                     email: "user@example.com".into(),
+                    base_url: None,
                 }),
                 github: Some(frodo_sync::GitHubConfig {
                     owner: "acme".into(),
                     repo: "proj".into(),
                     token: "ghp_xxx".into(),
+                    api_base: None,
                 }),
             }
         );

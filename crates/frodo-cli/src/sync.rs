@@ -35,7 +35,7 @@ pub async fn run(cfg: &config::Config, apply: bool) -> Result<()> {
     println!("Local tasks: {}", local.len());
     if apply {
         provider
-            .push(&[])
+            .push(&local)
             .await
             .map_err(|e| color_eyre::eyre::eyre!(e.to_string()))?;
         println!("Applied push (stub).");
@@ -51,6 +51,7 @@ fn select_provider(cfg: &config::Config) -> Box<dyn TaskSync> {
             owner: gh.owner.clone(),
             repo: gh.repo.clone(),
             token: gh.token.clone(),
+            api_base: gh.api_base.clone(),
         };
         return Box::new(GitHubSync::new(gh_cfg));
     }
@@ -60,6 +61,7 @@ fn select_provider(cfg: &config::Config) -> Box<dyn TaskSync> {
             project_key: jira.project_key.clone(),
             api_token: jira.api_token.clone(),
             email: jira.email.clone(),
+            base_url: jira.base_url.clone(),
         };
         return Box::new(JiraSync::new(jira_cfg));
     }
@@ -80,6 +82,7 @@ mod tests {
                 owner: "o".into(),
                 repo: "r".into(),
                 token: "t".into(),
+                api_base: None,
             }),
         };
         let provider = select_provider(&cfg);
@@ -96,6 +99,7 @@ mod tests {
                 project_key: "P".into(),
                 api_token: "t".into(),
                 email: "e".into(),
+                base_url: None,
             }),
             github: None,
         };
