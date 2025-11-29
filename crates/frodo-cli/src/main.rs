@@ -19,6 +19,7 @@ use frodo_storage::secure_file_store::EncryptedFileStore;
 use frodo_task::SecureStoreTaskRepo;
 use std::collections::BTreeMap;
 use std::sync::Arc;
+use tokio::runtime::Handle;
 use tracing::warn;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
@@ -38,13 +39,8 @@ async fn main() -> Result<()> {
                 .list()
                 .await
                 .map_err(|e| color_eyre::eyre::eyre!(e.to_string()))?;
-            let handle = tokio::runtime::Handle::current();
-            tui::launch(&tasks, move |id, status| {
-                let repo = repo.clone();
-                let _ = handle.block_on(async move {
-                    let _ = repo.set_status(id, status).await;
-                });
-            })?
+            let handle = Handle::current();
+            tui::launch(&tasks, repo, config.clone(), handle)?
         }
         cli::Command::Version => print_version(),
         cli::Command::Health => run_health_check(&config).await?,

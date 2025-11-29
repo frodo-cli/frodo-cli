@@ -1,12 +1,17 @@
 use std::{io, time::Duration};
 
+use crate::{config, sync, update};
 use color_eyre::Result;
 use crossterm::{
     event::{self, DisableMouseCapture, Event, KeyCode},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use frodo_core::tasks::{Task, TaskStatus};
+use frodo_core::{
+    storage::SecureStore,
+    tasks::{Task, TaskRepository, TaskStatus},
+};
+use frodo_task::SecureStoreTaskRepo;
 use ratatui::{
     backend::CrosstermBackend,
     layout::{Constraint, Direction, Layout},
@@ -15,16 +20,27 @@ use ratatui::{
     widgets::{Block, BorderType, Borders, List, ListItem, Paragraph},
     Terminal,
 };
-use uuid::Uuid;
+use std::sync::Arc;
+use tokio::runtime::Handle;
 
-/// Minimal TUI that renders tasks and allows marking them done with `d` (persists via callback).
+/// Minimal TUI that renders tasks and allows marking them done with `d`.
 /// Press `q` or `Esc` to exit.
-pub fn launch(tasks: &[Task], mut on_mark_done: impl FnMut(Uuid, TaskStatus)) -> Result<()> {
+pub fn launch<S>(
+    tasks: &[Task],
+    repo: Arc<SecureStoreTaskRepo<S>>,
+    config: config::Config,
+    handle: Handle,
+) -> Result<()>
+where
+    S: SecureStore + Send + Sync + 'static,
+{
     // Guard restores the terminal even if we early-return.
     let _guard = TerminalGuard::enter()?;
     let mut terminal = _guard.terminal()?;
     let mut tasks = tasks.to_owned();
     let mut selected = 0usize;
+    let mut status = String::from("Ready");
+    let mut config = config;
 
     loop {
         terminal.draw(|frame| {
@@ -97,18 +113,33 @@ pub fn launch(tasks: &[Task], mut on_mark_done: impl FnMut(Uuid, TaskStatus)) ->
             );
             frame.render_widget(body, chunks[1]);
 
-            let footer = Paragraph::new(Line::from(vec![
-                Span::raw("Press "),
-                Span::styled("q", Style::default().fg(Color::Cyan)),
-                Span::raw(" or "),
-                Span::styled("Esc", Style::default().fg(Color::Cyan)),
-                Span::raw(" to quit; "),
-                Span::styled("j/k", Style::default().fg(Color::Yellow)),
-                Span::raw(" to move; "),
-                Span::styled("d", Style::default().fg(Color::Green)),
-                Span::raw(" to mark selected done."),
-            ]))
-            .block(Block::default().borders(Borders::ALL).title("Controls"));
+            let footer =
+                Paragraph::new(Line::from(vec![
+                    Span::raw("Press "),
+                    Span::styled("q", Style::default().fg(Color::Cyan)),
+                    Span::raw(" or "),
+                    Span::styled("Esc", Style::default().fg(Color::Cyan)),
+                    Span::raw(" to quit; "),
+                    Span::styled("j/k", Style::default().fg(Color::Yellow)),
+                    Span::raw(" move; "),
+                    Span::styled("d", Style::default().fg(Color::Green)),
+                    Span::raw(" done; "),
+                    Span::styled("r", Style::default().fg(Color::Cyan)),
+                    Span::raw(" refresh; "),
+                    Span::styled("s", Style::default().fg(Color::Cyan)),
+                    Span::raw(" sync; "),
+                    Span::styled("u", Style::default().fg(Color::Cyan)),
+                    Span::raw(" update; "),
+                    Span::styled("c", Style::default().fg(Color::Cyan)),
+                    Span::raw(" reload config."),
+                ]))
+                .block(Block::default().borders(Borders::ALL).title(Line::from(
+                    vec![
+                        Span::raw("Controls "),
+                        Span::styled("| ", Style::default().fg(Color::DarkGray)),
+                        Span::raw(status.clone()),
+                    ],
+                )));
             frame.render_widget(footer, chunks[2]);
         })?;
 
@@ -129,9 +160,47 @@ pub fn launch(tasks: &[Task], mut on_mark_done: impl FnMut(Uuid, TaskStatus)) ->
                     KeyCode::Char('d') => {
                         if let Some(task) = tasks.get_mut(selected) {
                             task.status = TaskStatus::Done;
-                            on_mark_done(task.id, TaskStatus::Done);
+                            let id = task.id;
+                            let repo = repo.clone();
+                            let res = handle.block_on(async move {
+                                repo.set_status(id, TaskStatus::Done).await
+                            });
+                            status = match res {
+                                Ok(_) => "Marked done".into(),
+                                Err(err) => format!("Failed to mark done: {err}"),
+                            };
                         }
                     }
+                    KeyCode::Char('r') => {
+                        let repo = repo.clone();
+                        match handle.block_on(async move { repo.list().await }) {
+                            Ok(fresh) => {
+                                tasks = fresh;
+                                selected = 0;
+                                status = "Refreshed tasks".into();
+                            }
+                            Err(err) => status = format!("Refresh failed: {err}"),
+                        }
+                    }
+                    KeyCode::Char('s') => {
+                        match handle.block_on(async { sync::run(&config, false).await }) {
+                            Ok(_) => status = "Sync dry-run completed".into(),
+                            Err(err) => status = format!("Sync failed: {err}"),
+                        }
+                    }
+                    KeyCode::Char('u') => {
+                        match handle.block_on(async { update::run(true).await }) {
+                            Ok(_) => status = "Update check complete".into(),
+                            Err(err) => status = format!("Update check failed: {err}"),
+                        }
+                    }
+                    KeyCode::Char('c') => match config::load() {
+                        Ok(cfg) => {
+                            config = cfg;
+                            status = "Config reloaded".into();
+                        }
+                        Err(err) => status = format!("Config reload failed: {err}"),
+                    },
                     _ => {}
                 }
             }
