@@ -6,8 +6,12 @@ mod tui;
 use crate::cli::ConfigCommand;
 use clap::Parser;
 use color_eyre::Result;
-use frodo_core::storage::SecureStore;
+use frodo_core::{
+    agent::{Agent, AgentContext, AgentRequest, AgentResponse, EchoAgent},
+    storage::SecureStore,
+};
 use frodo_storage::secure_file_store::EncryptedFileStore;
+use std::collections::BTreeMap;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
 /// Entry point wiring the CLI to the (placeholder) TUI.
@@ -23,6 +27,7 @@ async fn main() -> Result<()> {
         cli::Command::Version => print_version(),
         cli::Command::Health => run_health_check(&config).await?,
         cli::Command::Config(ConfigCommand::Init) => init_config(&config)?,
+        cli::Command::Ask { prompt } => run_ask(prompt, &config).await?,
     }
 
     Ok(())
@@ -78,6 +83,36 @@ fn init_config(config: &config::Config) -> Result<()> {
     Ok(())
 }
 
+async fn run_ask(prompt: Vec<String>, config: &config::Config) -> Result<()> {
+    let prompt_text = prompt.join(" ");
+    let agent = build_agent(config);
+    let response = ask_with_agent(&agent, prompt_text).await?;
+    println!("{}", response.message.content);
+    if let Some(summary) = response.summary {
+        println!("\nSummary: {summary}");
+    }
+    Ok(())
+}
+
+async fn ask_with_agent<A: Agent>(agent: &A, prompt: String) -> Result<AgentResponse> {
+    let request = AgentRequest {
+        prompt,
+        conversation_id: None,
+        context: AgentContext {
+            workspace: None,
+            hints: BTreeMap::new(),
+        },
+    };
+    agent
+        .ask(request)
+        .await
+        .map_err(|e| color_eyre::eyre::eyre!(e.to_string()))
+}
+
+fn build_agent(_config: &config::Config) -> EchoAgent {
+    EchoAgent
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -90,5 +125,15 @@ mod tests {
         run_store_health(&store)
             .await
             .expect("health check should succeed");
+    }
+
+    #[tokio::test]
+    async fn ask_with_echo_agent_returns_echoed_content() {
+        let agent = EchoAgent;
+        let response = ask_with_agent(&agent, "hello world".into())
+            .await
+            .expect("ask should succeed");
+        assert_eq!(response.message.content, "Echo: hello world");
+        assert_eq!(response.summary.as_deref(), Some("echo stub"));
     }
 }

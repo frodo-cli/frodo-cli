@@ -25,6 +25,12 @@ pub enum Command {
     /// Manage CLI configuration.
     #[command(subcommand)]
     Config(ConfigCommand),
+    /// Ask the agent a question from the terminal.
+    Ask {
+        /// The question/prompt to send to the agent.
+        #[arg(required = true)]
+        prompt: Vec<String>,
+    },
 }
 
 #[derive(Subcommand, Debug, Clone, PartialEq, Eq)]
@@ -59,5 +65,16 @@ mod tests {
     fn parses_config_init_subcommand() {
         let cli = Cli::try_parse_from(["frodo", "config", "init"]).expect("parse should succeed");
         assert_eq!(cli.command, Some(Command::Config(ConfigCommand::Init)));
+    }
+
+    #[test]
+    fn parses_ask_subcommand() {
+        let cli = Cli::try_parse_from(["frodo", "ask", "hello", "world"]).expect("parse ok");
+        assert_eq!(
+            cli.command,
+            Some(Command::Ask {
+                prompt: vec!["hello".into(), "world".into()]
+            })
+        );
     }
 }
