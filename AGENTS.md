@@ -42,6 +42,7 @@ This file defines how Frodo’s AI agents work, what they can access, and how to
 - Default: OpenAI (use latest `async-openai` crate version; verify against docs before each update). CLI prefers OpenAI when `openai.api_key` is set in config or `FRODO_OPENAI_API_KEY`/`OPENAI_API_KEY` are present; otherwise falls back to local `EchoAgent`.
 - Default model: `gpt-4o-mini` (may be overridden in config).
 - Local: `llama.cpp`/GGML-backed provider (binary or library mode), for offline mode.
+- Context: agents receive a short local task summary (top 5 tasks, with status and tags) when using `frodo ask`; git/Jira/GitHub context planned next.
 - Stub: deterministic fake for tests.
 - Config: endpoint, model id, api key, timeouts, max tokens, temperature; pulled from config file + env; secrets kept in keychain when possible.
 - Transport: `reqwest` with strict TLS; HTTP proxy honors env vars; retries with jitter.
